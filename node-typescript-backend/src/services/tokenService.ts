@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { JWT_SECRET, JWT_EXPIRES_IN, JWT_COOKIE_EXPIRES_IN } from '../utils/constants.js';
+import { JWT_SECRET, JWT_EXPIRES_IN, JWT_COOKIE_EXPIRES_IN } from '../utils/constants';
 import { Response } from 'express';
 
 interface TokenPayload {
@@ -8,13 +8,18 @@ interface TokenPayload {
 }
 
 export const generateToken = (payload: TokenPayload): string => {
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-  });
+  const options: jwt.SignOptions = {
+    expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
+  };
+  
+  return jwt.sign(
+    payload,
+    JWT_SECRET,
+    options
+  );
 };
-
 export const verifyToken = (token: string): TokenPayload => {
-  return jwt.verify(token, JWT_SECRET) as TokenPayload;
+  return jwt.verify(token, JWT_SECRET as jwt.Secret) as TokenPayload;
 };
 
 export const sendTokenResponse = (user: any, res: Response): void => {

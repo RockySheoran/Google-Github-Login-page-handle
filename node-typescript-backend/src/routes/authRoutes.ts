@@ -1,8 +1,7 @@
 import express from 'express';
 import passport from 'passport';
-import authController from '../controllers/authController.js';
-import { protect } from '../middlewares/authMiddleware.js';
-
+import authController from '../controllers/authController';
+import { protect } from '../middlewares/authMiddleware';
 
 const router = express.Router();
 

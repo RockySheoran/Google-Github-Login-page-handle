@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import passport from 'passport';
-import { sendTokenResponse } from '../services/tokenService.js';
+import { sendTokenResponse } from '../services/tokenService';
 
 
 class AuthController {
@@ -41,24 +41,40 @@ class AuthController {
   }
 
   // Get current user
-  public getMe(req: Request, res: Response, next: NextFunction) {
-    res.json({
-      success: true,
-      user: req.user,
-    });
-  }
+   public getMe = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<any> => {
+    try {
+      res.json({
+        success: true,
+        user: req.user,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   // Logout
-  public logout(req: Request, res: Response, next: NextFunction) {
-    res.cookie('jwt', 'none', {
-      expires: new Date(Date.now() + 10 * 1000),
-      httpOnly: true,
-    });
-    res.status(200).json({
-      success: true,
-      message: 'User logged out successfully',
-    });
-  }
+ public logout = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<any> => {
+    try {
+      res.cookie('jwt', 'none', {
+        expires: new Date(Date.now() + 10 * 1000),
+        httpOnly: true,
+      });
+      res.status(200).json({
+        success: true,
+        message: 'User logged out successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export default new AuthController();

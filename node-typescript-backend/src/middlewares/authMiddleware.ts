@@ -1,20 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
-import { JWT_SECRET } from '../utils/constants.js';
+import User from '../models/User';
+import { JWT_SECRET } from '../utils/constants';
 
 
 interface AuthenticatedRequest extends Request {
   user?: any;
-  cookies?: { [key: string]: string };
 }
 
 // Protect routes
-export const protect = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const protect = async (req: AuthenticatedRequest, res: Response, next: NextFunction) : Promise<any> => {
   let token;
 
   // Get token from cookie
-  if (req.cookies.jwt) {
+  if (req.cookies?.jwt) {
     token = req.cookies.jwt;
   }
 

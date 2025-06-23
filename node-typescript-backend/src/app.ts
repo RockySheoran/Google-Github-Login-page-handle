@@ -1,5 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env' });
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -7,13 +9,14 @@ import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
-import connectDB from './config/db.js';
-import authRoutes from './routes/authRoutes.js';
-import { errorHandler, notFound } from './middlewares/errorMiddleware.js';
-import '../config/passport';
-import dotenv from 'dotenv';
+import connectDB from './config/db';
+import authRoutes from './routes/authRoutes';
+import { errorHandler, notFound } from './middlewares/errorMiddleware';
+import './config/passport';
 
+console.log('Google Client ID:', process.env.GOOGLE_CLIENT_ID); // Test logging
 // Connect to database
+
 connectDB();
 
 const app = express();
