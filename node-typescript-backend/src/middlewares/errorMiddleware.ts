@@ -11,6 +11,8 @@ class ErrorResponse extends Error {
 export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
   let error = { ...err };
   error.message = err.message;
+  console.log(error.message);
+  console.log("ddddddddddddddddddddddddddddddddddddffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff----------------------")
 
   // Log to console for dev
   console.error(err.stack);
@@ -40,6 +42,8 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
 };
 
 export const notFound = (req: Request, res: Response, next: NextFunction) => {
+  console.log('Not Found Middleware Triggered');
+  // This middleware is used to handle 404 errors
   res.status(404).json({
     success: false,
     message: 'Not Found',
