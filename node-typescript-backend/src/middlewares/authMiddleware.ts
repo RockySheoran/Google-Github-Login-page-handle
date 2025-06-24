@@ -16,6 +16,7 @@ export const protect = async (req: AuthenticatedRequest, res: Response, next: Ne
   if (req.cookies?.jwt) {
     token = req.cookies.jwt;
   }
+  console.log(token)
 
   if (!token) {
     return res.status(401).json({

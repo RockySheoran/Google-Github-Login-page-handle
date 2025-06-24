@@ -12,7 +12,7 @@ import connectDB from './config/db';
 import authRoutes from './routes/authRoutes';
 import { errorHandler, notFound } from './middlewares/errorMiddleware';
 import './config/passport';
-import sanitize from './middlewares/sanitize';
+// import sanitize from './middlewares/sanitize';
 
 // Load environment variables
 
@@ -50,7 +50,7 @@ app.use(
 );
 
 // 6. Custom Sanitization Middleware
-app.use(sanitize());
+// app.use(sanitize());
 
 // 7. Prevent Parameter Pollution
 app.use(

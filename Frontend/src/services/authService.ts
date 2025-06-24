@@ -1,4 +1,5 @@
 import api from './api';
+import axios from 'axios';
 
 
 export const getUser = async (token: string) => {

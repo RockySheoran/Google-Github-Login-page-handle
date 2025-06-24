@@ -10,20 +10,22 @@ class AuthController {
     passport.authenticate('google', {
       session: false,
       scope: ['profile', 'email'],
-      state: redirectUrl, // Store redirect URL in state
-      accessType: 'offline', // Optional: for refresh tokens
-      prompt: 'select_account' // Optional: force account selection
+      // state: redirectUrl, // Store redirect URL in state
+      // accessType: 'offline', // Optional: for refresh tokens
+      // prompt: 'select_account' // Optional: force account selection
     })(req, res, next);
   }
 
   // Google callback
   public googleCallback(req: Request, res: Response, next: NextFunction) {
+    console.log("111111111111111111111111111111111111111111111111111111111")
     passport.authenticate('google', { 
       session: false,
-      failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_auth_failed`
+      // failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_auth_failed`
     }, (err: Error, user: any, info: any) => {
       if (err) {
         console.error('Google auth error:', err);
+        console.log(err, '----------------------');
         return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_error`);
       }
       
@@ -34,10 +36,11 @@ class AuthController {
 
       // Generate token and set cookie
       const token = sendTokenResponse(user, res);
+      console.log(token, '----------------------');
       
       // Redirect to frontend with token
-      const redirectUri = req.query.state?.toString() || `${process.env.FRONTEND_URL}/auth/success`;
-      return res.redirect(`${redirectUri}?token=${token}`);
+      const redirectUri = req.query.state?.toString() || `${process.env.FRONTEND_URL}/`;
+      return res.redirect(`${redirectUri}`);
     })(req, res, next);
   }
 
@@ -92,11 +95,16 @@ class AuthController {
   // Logout
   public logout = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      console.log("dfddddddddddddddddddddddddddd")
       res.cookie('jwt', 'none', {
         expires: new Date(Date.now() + 10 * 1000),
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict'
+      });
+      res.cookie('userData', 'none', {
+        expires: new Date(Date.now() + 10 * 1000),
+        httpOnly: false,
       });
       
       res.status(200).json({
