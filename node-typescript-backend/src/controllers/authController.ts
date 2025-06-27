@@ -61,7 +61,7 @@ class AuthController {
           // Create new user
           const { data: { user: createdUser }, error: createError } = 
             await supabase.auth.admin.createUser({
-              email: user.email || `${user.id}@google.com`,
+              email: user.email ,
               user_metadata: {
                 name: user.name || user.displayName || user.email?.split('@')[0] || 'User',
                 avatar_url: user.avatar || user.photo || null
@@ -105,8 +105,8 @@ class AuthController {
 
   // GitHub authentication
   public githubAuth(req: Request, res: Response, next: NextFunction) {
-    const redirectUrl = req.query.redirect_uri?.toString() || `${process.env.FRONTEND_URL}/auth/success`;
-    
+    const redirectUrl = req.query.redirect_uri?.toString() || `${process.env.BACKEND_URL}/api/auth/github/callback`;
+    console.log("redirectUrl:", redirectUrl);
     passport.authenticate('github', {
       session: false,
       scope: ['user:email'],
@@ -120,22 +120,26 @@ class AuthController {
       session: false
     }, async (err: Error, user: any, info: any) => {
       try {
+        console.log("GitHub user:", user);
         if (err || !user) {
           console.error('GitHub auth error:', err || info);
           return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
         }
 
         // Get primary email
-        const primaryEmail = user.emails?.find((email: any) => email.primary)?.value || 
-                           user.emails?.[0]?.value || 
-                           `${user.id}@github.com`;
-
+        const primaryEmail =user.email  ;
+        console.log("primaryEmail:", primaryEmail);
+        if (!primaryEmail) {
+          console.error('No primary email found for GitHub user');
+          return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_email`);
+        }
         // Check if user exists in Supabase
         const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
         if (listError) throw listError;
 
         const existingUser = users?.find(u => u.email === primaryEmail);
-        
+        console.log("existingUser:", existingUser);
+        // If user exists, update their information or create a new user
         let authUser;
         if (existingUser) {
           // User exists - update provider if needed
@@ -167,13 +171,14 @@ class AuthController {
             await supabase.auth.admin.createUser({
               email: primaryEmail,
               user_metadata: {
-                name: user.displayName || user.username || primaryEmail.split('@')[0] || 'User',
+                name: user.displayName || user.name || primaryEmail.split('@')[0] || 'User',
                 avatar_url: user.photos?.[0]?.value || null
               },
               app_metadata: {
                 provider: 'github',
                 providers: ['github']
               },
+              
               email_confirm: true
             });
 
@@ -196,22 +201,22 @@ class AuthController {
           { expiresIn: '1h' }
         );
 
-        // Store/update additional profile data
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: authUser?.id,
-            email: primaryEmail,
-            full_name: user.displayName || user.username,
-            avatar_url: user.photos?.[0]?.value,
-            provider: 'github',
-            last_login_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'id'
-          });
+        // // Store/update additional profile data
+        // const { error: profileError } = await supabase
+        //   .from('profiles')
+        //   .upsert({
+        //     id: authUser?.id,
+        //     email: primaryEmail,
+        //     full_name: user.displayName || user.username,
+        //     avatar_url: user.photos?.[0]?.value,
+        //     provider: 'github',
+        //     last_login_at: new Date().toISOString(),
+        //     updated_at: new Date().toISOString()
+        //   }, {
+        //     onConflict: 'id'
+        //   });
 
-        if (profileError) throw profileError;
+        // if (profileError) throw profileError;
 
         // Redirect with token
         const redirectUri = req.query.state?.toString() || `${process.env.FRONTEND_URL}/auth/success`;
@@ -228,6 +233,7 @@ class AuthController {
   public getMe = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const token = req.headers.authorization?.split(' ')[1];
+      console.log(token)
       if (!token) {
         return res.status(401).json({ success: false, message: 'No token provided' });
       }
@@ -239,24 +245,27 @@ class AuthController {
       const { data: { user }, error } = await supabase.auth.admin.getUserById(decoded.id);
       
       if (error || !user) {
-        throw error || new Error('User not found');
+        console.error('User not found:', error);
+        return res.status(404).json({ success: false, message: 'User not found' });
       }
 
       // Get additional profile data
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      // const { data: profile, error: profileError } = await supabase
+      //   .from('profiles')
+      //   .select('*')
+      //   .eq('id', user.id)
+      //   .single();
+        
+      //   console.log("profile:", profile);
 
-      if (profileError) throw profileError;
+        console.log("user:", user);
+
+      // if (profileError) throw profileError;
 
       res.status(200).json({
         success: true,
-        user: {
-          ...user,
-          profile: profile || null
-        }
+        user:user
+        
       });
     } catch (error) {
       console.error('Authentication error:', error);

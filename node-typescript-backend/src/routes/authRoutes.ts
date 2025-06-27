@@ -28,7 +28,7 @@ router.get(
 );
 
 // Get current user
-router.get('/me', protect, authController.getMe);
+router.get('/me', authController.getMe);
 
 // Logout
 router.get('/logout', protect, authController.logout);

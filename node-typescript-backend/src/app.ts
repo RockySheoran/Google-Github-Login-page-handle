@@ -17,7 +17,7 @@ import './config/passport';
 // Load environment variables
 
 // Connect to database
-connectDB();
+// connectDB();
 
 const app = express();
 

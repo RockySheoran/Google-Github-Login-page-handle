@@ -41,7 +41,7 @@ passport.use(new GoogleStrategy({
     : 'http://localhost:5000/api/auth/google/callback',
   scope: ['profile', 'email'],
   passReqToCallback: true,
-  // proxy: true
+  proxy: true
 }, async (req, accessToken, refreshToken, profile, done) => {
   try {
 
@@ -50,32 +50,19 @@ passport.use(new GoogleStrategy({
       throw new Error('No email provided by Google');
     }
 
-    let user = await User.findOne({ 
-      $or: [
-        { email: profile.emails[0].value },
-        { googleId: profile.id }
-      ]
-    });
+    let user 
 
-    if (!user) {
-      user = await User.create({
+    
+      user = {
         googleId: profile.id,
         email: profile.emails[0].value,
         name: profile.displayName,
         avatar: profile.photos?.[0]?.value,
         provider: 'google',
         isVerified: true
-      });
-    } else {
-      // Update existing user if needed
-      if (!user.googleId) {
-        user.googleId = profile.id;
-        user.avatar = profile.photos?.[0]?.value;
-        user.provider = 'google';
-        user.isVerified = true;
-        await user.save();
       }
-    }
+    
+    
 
     done(null, user);
   } catch (error) {
@@ -95,33 +82,20 @@ passport.use(new GitHubStrategy({
   proxy: true
 }, async (accessToken: string, refreshToken: string, profile: any, done: any) => {
   try {
+    console.log(accessToken, refreshToken, profile);
     const email = profile.emails?.[0]?.value || `${profile.username}@users.noreply.github.com`;
-    
-    let user = await User.findOne({ 
-      $or: [
-        { email },
-        { githubId: profile.id }
-      ]
-    });
+    console.log("GitHub profile:", profile);
+    let user ;
 
-    if (!user) {
-      user = await User.create({
+    
+      user = {
         githubId: profile.id,
         email,
         name: profile.displayName || profile.username,
         avatar: profile.photos?.[0]?.value,
         provider: 'github',
         isVerified: !!profile.emails?.[0]?.value
-      });
-    } else {
-      if (!user.githubId) {
-        user.githubId = profile.id;
-        user.avatar = profile.photos?.[0]?.value;
-        user.provider = 'github';
-        if (profile.emails?.[0]?.value) user.isVerified = true;
-        await user.save();
       }
-    }
 
     done(null, user);
   } catch (error) {
