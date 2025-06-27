@@ -41,9 +41,11 @@ passport.use(new GoogleStrategy({
     : 'http://localhost:5000/api/auth/google/callback',
   scope: ['profile', 'email'],
   passReqToCallback: true,
-  proxy: true
+  // proxy: true
 }, async (req, accessToken, refreshToken, profile, done) => {
   try {
+
+    // console.log(profile)
     if (!profile.emails?.[0]?.value) {
       throw new Error('No email provided by Google');
     }

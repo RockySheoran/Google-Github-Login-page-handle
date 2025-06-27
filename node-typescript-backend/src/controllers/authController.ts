@@ -1,46 +1,105 @@
-import { Request, Response, NextFunction } from 'express';
+import e, { Request, Response, NextFunction } from 'express';
 import passport from 'passport';
-import { sendTokenResponse } from '../services/tokenService';
+import { supabase } from '../config/supabaseClient';
+import jwt from 'jsonwebtoken';
 
 class AuthController {
   // Google authentication
   public googleAuth(req: Request, res: Response, next: NextFunction) {
-    const redirectUrl = req.query.redirect_uri?.toString() || `${process.env.FRONTEND_URL}/auth/success`;
-    
+    const redirectUrl = req.query.redirect_uri?.toString() || `${process.env.BACKEND_URL}/api/auth/google/callback`;
+
     passport.authenticate('google', {
       session: false,
       scope: ['profile', 'email'],
-      // state: redirectUrl, // Store redirect URL in state
-      // accessType: 'offline', // Optional: for refresh tokens
-      // prompt: 'select_account' // Optional: force account selection
+      state: redirectUrl
     })(req, res, next);
   }
 
-  // Google callback
-  public googleCallback(req: Request, res: Response, next: NextFunction) {
-    console.log("111111111111111111111111111111111111111111111111111111111")
+  // Google callback with JWT token
+  public async googleCallback(req: Request, res: Response, next: NextFunction) {
     passport.authenticate('google', { 
-      session: false,
-      // failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_auth_failed`
-    }, (err: Error, user: any, info: any) => {
-      if (err) {
-        console.error('Google auth error:', err);
-        console.log(err, '----------------------');
-        return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_error`);
-      }
-      
-      if (!user) {
-        console.error('Google auth failed:', info);
-        return res.redirect(`${process.env.FRONTEND_URL}/login?error=authentication_failed`);
-      }
+      session: false
+    }, async (err: Error, user: any, info: any) => {
+      try {
+        if (err || !user) {
+          console.error('Google auth error:', err || info);
+          return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+        }
 
-      // Generate token and set cookie
-      const token = sendTokenResponse(user, res);
-      console.log(token, '----------------------');
-      
-      // Redirect to frontend with token
-      const redirectUri = req.query.state?.toString() || `${process.env.FRONTEND_URL}/`;
-      return res.redirect(`${redirectUri}`);
+        // Check if user exists in Supabase
+        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+        if (listError) throw listError;
+
+        const existingUser = users?.find(u => u.email === user.email);
+        
+        let authUser;
+        if (existingUser) {
+          // User exists - update provider if needed
+          const currentProviders = existingUser.app_metadata?.providers || [];
+          if (!currentProviders.includes('google')) {
+            // Add Google to providers
+            const { data: { user: updatedUser }, error: updateError } = 
+              await supabase.auth.admin.updateUserById(existingUser.id, {
+                app_metadata: {
+                  ...existingUser.app_metadata,
+                  provider: 'google',
+                  providers: [...currentProviders, 'google']
+                },
+                user_metadata: {
+                  ...existingUser.user_metadata,
+                  name: user.name || user.displayName || existingUser.user_metadata?.name,
+                  avatar_url: user.avatar || user.photo || existingUser.user_metadata?.avatar_url
+                }
+              });
+            
+            if (updateError) throw updateError;
+            authUser = updatedUser;
+          } else {
+            authUser = existingUser;
+          }
+        } else {
+          // Create new user
+          const { data: { user: createdUser }, error: createError } = 
+            await supabase.auth.admin.createUser({
+              email: user.email || `${user.id}@google.com`,
+              user_metadata: {
+                name: user.name || user.displayName || user.email?.split('@')[0] || 'User',
+                avatar_url: user.avatar || user.photo || null
+              },
+              app_metadata: {
+                provider: 'google',
+                providers: ['google']
+              },
+              email_confirm: true
+            });
+
+          if (createError || !createdUser) {
+            console.error('Supabase user creation error:', createError);
+            throw createError || new Error('User creation failed');
+          }
+          authUser = createdUser;
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+          {
+            id: authUser?.id,
+            email: authUser?.email,
+            name: authUser?.user_metadata?.name || user.name || user.displayName,
+            providers: authUser?.app_metadata?.providers || []
+          },
+          process.env.JWT_SECRET!,
+          { expiresIn: '1h' }
+        );
+
+        // Redirect with token
+        const redirectUri = req.query.state?.toString() || `${process.env.FRONTEND_URL}/auth/success`;
+        return res.redirect(`${redirectUri}?token=${token}`);
+
+      } catch (error) {
+        console.error('Authentication processing error:', error);
+        return res.redirect(`${process.env.FRONTEND_URL}/login?error=server_error`);
+      }
     })(req, res, next);
   }
 
@@ -55,61 +114,163 @@ class AuthController {
     })(req, res, next);
   }
 
-  // GitHub callback
-  public githubCallback(req: Request, res: Response, next: NextFunction) {
+  // GitHub callback with JWT token
+  public async githubCallback(req: Request, res: Response, next: NextFunction) {
     passport.authenticate('github', { 
-      session: false,
-      failureRedirect: `${process.env.FRONTEND_URL}/login?error=github_auth_failed`
-    }, (err: Error, user: any, info: any) => {
-      if (err) {
-        console.error('GitHub auth error:', err);
-        return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_error`);
-      }
-      
-      if (!user) {
-        console.error('GitHub auth failed:', info);
-        return res.redirect(`${process.env.FRONTEND_URL}/login?error=authentication_failed`);
-      }
+      session: false
+    }, async (err: Error, user: any, info: any) => {
+      try {
+        if (err || !user) {
+          console.error('GitHub auth error:', err || info);
+          return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+        }
 
-      // Generate token and set cookie
-      const token = sendTokenResponse(user, res);
-      
-      // Redirect to frontend with token
-      const redirectUri = req.query.state?.toString() || `${process.env.FRONTEND_URL}/auth/success`;
-      return res.redirect(`${redirectUri}?token=${token}`);
+        // Get primary email
+        const primaryEmail = user.emails?.find((email: any) => email.primary)?.value || 
+                           user.emails?.[0]?.value || 
+                           `${user.id}@github.com`;
+
+        // Check if user exists in Supabase
+        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+        if (listError) throw listError;
+
+        const existingUser = users?.find(u => u.email === primaryEmail);
+        
+        let authUser;
+        if (existingUser) {
+          // User exists - update provider if needed
+          const currentProviders = existingUser.app_metadata?.providers || [];
+          if (!currentProviders.includes('github')) {
+            // Add GitHub to providers
+            const { data: { user: updatedUser }, error: updateError } = 
+              await supabase.auth.admin.updateUserById(existingUser.id, {
+                app_metadata: {
+                  ...existingUser.app_metadata,
+                  provider: 'github',
+                  providers: [...currentProviders, 'github']
+                },
+                user_metadata: {
+                  ...existingUser.user_metadata,
+                  name: user.displayName || user.username || existingUser.user_metadata?.name,
+                  avatar_url: user.photos?.[0]?.value || existingUser.user_metadata?.avatar_url
+                }
+              });
+            
+            if (updateError) throw updateError;
+            authUser = updatedUser;
+          } else {
+            authUser = existingUser;
+          }
+        } else {
+          // Create new user
+          const { data: { user: createdUser }, error: createError } = 
+            await supabase.auth.admin.createUser({
+              email: primaryEmail,
+              user_metadata: {
+                name: user.displayName || user.username || primaryEmail.split('@')[0] || 'User',
+                avatar_url: user.photos?.[0]?.value || null
+              },
+              app_metadata: {
+                provider: 'github',
+                providers: ['github']
+              },
+              email_confirm: true
+            });
+
+          if (createError || !createdUser) {
+            console.error('Supabase user creation error:', createError);
+            throw createError || new Error('User creation failed');
+          }
+          authUser = createdUser;
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+          {
+            id: authUser?.id,
+            email: primaryEmail,
+            name: authUser?.user_metadata?.name || user.displayName || user.username,
+            providers: authUser?.app_metadata?.providers || []
+          },
+          process.env.JWT_SECRET!,
+          { expiresIn: '1h' }
+        );
+
+        // Store/update additional profile data
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: authUser?.id,
+            email: primaryEmail,
+            full_name: user.displayName || user.username,
+            avatar_url: user.photos?.[0]?.value,
+            provider: 'github',
+            last_login_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'id'
+          });
+
+        if (profileError) throw profileError;
+
+        // Redirect with token
+        const redirectUri = req.query.state?.toString() || `${process.env.FRONTEND_URL}/auth/success`;
+        return res.redirect(`${redirectUri}?token=${token}`);
+
+      } catch (error) {
+        console.error('Authentication processing error:', error);
+        return res.redirect(`${process.env.FRONTEND_URL}/login?error=server_error`);
+      }
     })(req, res, next);
   }
 
-  // Get current user
-  public getMe = async (req: Request, res: Response, next: NextFunction) => {
+  // Get current user using JWT
+  public getMe = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        return res.status(401).json({ success: false, message: 'No token provided' });
+      }
+
+      // Verify JWT token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
+
+      // Get user from Supabase
+      const { data: { user }, error } = await supabase.auth.admin.getUserById(decoded.id);
+      
+      if (error || !user) {
+        throw error || new Error('User not found');
+      }
+
+      // Get additional profile data
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
       res.status(200).json({
         success: true,
-        user: req.user
+        user: {
+          ...user,
+          profile: profile || null
+        }
       });
     } catch (error) {
-      next(error);
+      console.error('Authentication error:', error);
+      res.status(401).json({ success: false, message: 'Invalid token' });
     }
   };
 
-  // Logout
+  // Logout (client should discard the token)
   public logout = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      console.log("dfddddddddddddddddddddddddddd")
-      res.cookie('jwt', 'none', {
-        expires: new Date(Date.now() + 10 * 1000),
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
-      });
-      res.cookie('userData', 'none', {
-        expires: new Date(Date.now() + 10 * 1000),
-        httpOnly: false,
-      });
-      
+      // In a JWT system, logout is handled client-side by discarding the token
       res.status(200).json({
         success: true,
-        message: 'User logged out successfully'
+        message: 'Logout successful (client should discard token)'
       });
     } catch (error) {
       next(error);

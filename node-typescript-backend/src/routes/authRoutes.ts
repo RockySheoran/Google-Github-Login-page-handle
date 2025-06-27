@@ -8,14 +8,14 @@ import { protect } from '../middlewares/authMiddleware';
 const router = express.Router();
 
 // Google OAuth routes
-// router.get('/google', authController.googleAuth);
+router.get('/google', authController.googleAuth);
 router.get(
   '/google/callback',
   authController.googleCallback
 );
-router.get('/google', 
-    passport.authenticate('google', {scope:['profile', 'email']})
-)
+// router.get('/google', 
+//     passport.authenticate('google', {scope:['profile', 'email']})
+// )
 
 
 
