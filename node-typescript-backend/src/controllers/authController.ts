@@ -31,7 +31,11 @@ class AuthController {
         if (listError) throw listError;
 
         const existingUser = users?.find(u => u.email === user.email);
-        
+          const { data: userData, error } = await supabase.rpc('get_user_by_email', {
+            p_email: user.email,
+          });
+          console.log("userData:", userData);
+console.log("existingUser:", existingUser);
         let authUser;
         if (existingUser) {
           // User exists - update provider if needed
@@ -133,6 +137,12 @@ class AuthController {
           console.error('No primary email found for GitHub user');
           return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_email`);
         }
+      //   const { data: { users1 }, error } = await supabase.auth.admin.listUsers({
+      //     page: 1,
+      //   perPage: 1,
+      //    filter: `${primaryEmail}`
+      // });
+// console.log(users1);
         // Check if user exists in Supabase
         const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
         if (listError) throw listError;
@@ -179,7 +189,8 @@ class AuthController {
                 providers: ['github']
               },
               
-              email_confirm: true
+              email_confirm: true,
+              
             });
 
           if (createError || !createdUser) {
@@ -262,7 +273,7 @@ class AuthController {
 
       // if (profileError) throw profileError;
 
-      res.status(200).json({
+    return  res.status(200).json({
         success: true,
         user:user
         

@@ -84,7 +84,7 @@ passport.use(new GitHubStrategy({
   try {
     console.log(accessToken, refreshToken, profile);
     const email = profile.emails?.[0]?.value || `${profile.username}@users.noreply.github.com`;
-    console.log("GitHub profile:", profile);
+    // console.log("GitHub profile:", profile);
     let user ;
 
     
