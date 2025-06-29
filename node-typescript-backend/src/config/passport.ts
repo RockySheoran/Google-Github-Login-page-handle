@@ -9,6 +9,7 @@ import {
   NODE_ENV
 } from '../utils/constants';
 import User from '../models/User';
+import { supabase } from './supabaseClient';
 
 // Validate environment variables
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
@@ -19,17 +20,13 @@ if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
 }
 
 // Serialization
-passport.serializeUser((user: any, done) => {
-  done(null, user.id);
+// Passport serialization and deserialization
+passport.serializeUser((user: Express.User, done) => {
+  done(null, user);
 });
 
-passport.deserializeUser(async (id, done) => {
-  try {
-    const user = await User.findById(id);
-    done(null, user);
-  } catch (error) {
-    done(error, null);
-  }
+passport.deserializeUser((user: Express.User, done) => {
+  done(null, user);
 });
 
 // Google Strategy with enhanced configuration
@@ -43,8 +40,9 @@ passport.use(new GoogleStrategy({
   passReqToCallback: true,
   proxy: true
 }, async (req, accessToken, refreshToken, profile, done) => {
-  try {
 
+  try {
+console.log(accessToken, refreshToken, profile);
     // console.log(profile)
     if (!profile.emails?.[0]?.value) {
       throw new Error('No email provided by Google');
@@ -82,7 +80,7 @@ passport.use(new GitHubStrategy({
   proxy: true
 }, async (accessToken: string, refreshToken: string, profile: any, done: any) => {
   try {
-    console.log(accessToken, refreshToken, profile);
+    // console.log(accessToken, refreshToken, profile);
     const email = profile.emails?.[0]?.value || `${profile.username}@users.noreply.github.com`;
     // console.log("GitHub profile:", profile);
     let user ;

@@ -6,19 +6,20 @@ import jwt from 'jsonwebtoken';
 class AuthController {
   // Google authentication
   public googleAuth(req: Request, res: Response, next: NextFunction) {
-    const redirectUrl = req.query.redirect_uri?.toString() || `${process.env.BACKEND_URL}/api/auth/google/callback`;
+    const redirectUrl = req.query.redirect_uri?.toString() || `${process.env.FRONTEND_URL}/api/auth/google/callback`;
 
     passport.authenticate('google', {
-      session: false,
+
       scope: ['profile', 'email'],
-      state: redirectUrl
+      successRedirect: redirectUrl,
+
     })(req, res, next);
   }
 
   // Google callback with JWT token
   public async googleCallback(req: Request, res: Response, next: NextFunction) {
-    passport.authenticate('google', { 
-      session: false
+    passport.authenticate('google', {
+      session: true,
     }, async (err: Error, user: any, info: any) => {
       try {
         if (err || !user) {
@@ -27,22 +28,24 @@ class AuthController {
         }
 
         // Check if user exists in Supabase
-        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-        if (listError) throw listError;
+        // const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+        // if (listError) throw listError;
 
-        const existingUser = users?.find(u => u.email === user.email);
-          const { data: userData, error } = await supabase.rpc('get_user_by_email', {
-            p_email: user.email,
-          });
-          console.log("userData:", userData);
-console.log("existingUser:", existingUser);
+        // const existingUser = users?.find(u => u.email === user.email);
+
+        // console.log("existingUser:", existingUser);
+        const { data: existingUser } = await supabase.rpc("get_user_by_email", {
+          p_email: user.email,
+        });
+        console.log("existingUser:", existingUser);
+
         let authUser;
         if (existingUser) {
           // User exists - update provider if needed
           const currentProviders = existingUser.app_metadata?.providers || [];
           if (!currentProviders.includes('google')) {
             // Add Google to providers
-            const { data: { user: updatedUser }, error: updateError } = 
+            const { data: { user: updatedUser }, error: updateError } =
               await supabase.auth.admin.updateUserById(existingUser.id, {
                 app_metadata: {
                   ...existingUser.app_metadata,
@@ -55,7 +58,7 @@ console.log("existingUser:", existingUser);
                   avatar_url: user.avatar || user.photo || existingUser.user_metadata?.avatar_url
                 }
               });
-            
+
             if (updateError) throw updateError;
             authUser = updatedUser;
           } else {
@@ -63,9 +66,9 @@ console.log("existingUser:", existingUser);
           }
         } else {
           // Create new user
-          const { data: { user: createdUser }, error: createError } = 
+          const { data: { user: createdUser }, error: createError } =
             await supabase.auth.admin.createUser({
-              email: user.email ,
+              email: user.email,
               user_metadata: {
                 name: user.name || user.displayName || user.email?.split('@')[0] || 'User',
                 avatar_url: user.avatar || user.photo || null
@@ -120,7 +123,7 @@ console.log("existingUser:", existingUser);
 
   // GitHub callback with JWT token
   public async githubCallback(req: Request, res: Response, next: NextFunction) {
-    passport.authenticate('github', { 
+    passport.authenticate('github', {
       session: false
     }, async (err: Error, user: any, info: any) => {
       try {
@@ -131,23 +134,17 @@ console.log("existingUser:", existingUser);
         }
 
         // Get primary email
-        const primaryEmail =user.email  ;
+        const primaryEmail = user.email;
         console.log("primaryEmail:", primaryEmail);
         if (!primaryEmail) {
           console.error('No primary email found for GitHub user');
           return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_email`);
         }
-      //   const { data: { users1 }, error } = await supabase.auth.admin.listUsers({
-      //     page: 1,
-      //   perPage: 1,
-      //    filter: `${primaryEmail}`
-      // });
-// console.log(users1);
-        // Check if user exists in Supabase
-        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-        if (listError) throw listError;
+       const { data: existingUser } = await supabase.rpc("get_user_by_email", {
+          p_email: user.email,
+        });
+        console.log("existingUser:", existingUser);
 
-        const existingUser = users?.find(u => u.email === primaryEmail);
         console.log("existingUser:", existingUser);
         // If user exists, update their information or create a new user
         let authUser;
@@ -156,7 +153,7 @@ console.log("existingUser:", existingUser);
           const currentProviders = existingUser.app_metadata?.providers || [];
           if (!currentProviders.includes('github')) {
             // Add GitHub to providers
-            const { data: { user: updatedUser }, error: updateError } = 
+            const { data: { user: updatedUser }, error: updateError } =
               await supabase.auth.admin.updateUserById(existingUser.id, {
                 app_metadata: {
                   ...existingUser.app_metadata,
@@ -169,7 +166,7 @@ console.log("existingUser:", existingUser);
                   avatar_url: user.photos?.[0]?.value || existingUser.user_metadata?.avatar_url
                 }
               });
-            
+
             if (updateError) throw updateError;
             authUser = updatedUser;
           } else {
@@ -177,7 +174,7 @@ console.log("existingUser:", existingUser);
           }
         } else {
           // Create new user
-          const { data: { user: createdUser }, error: createError } = 
+          const { data: { user: createdUser }, error: createError } =
             await supabase.auth.admin.createUser({
               email: primaryEmail,
               user_metadata: {
@@ -188,9 +185,9 @@ console.log("existingUser:", existingUser);
                 provider: 'github',
                 providers: ['github']
               },
-              
+
               email_confirm: true,
-              
+
             });
 
           if (createError || !createdUser) {
@@ -254,7 +251,7 @@ console.log("existingUser:", existingUser);
 
       // Get user from Supabase
       const { data: { user }, error } = await supabase.auth.admin.getUserById(decoded.id);
-      
+
       if (error || !user) {
         console.error('User not found:', error);
         return res.status(404).json({ success: false, message: 'User not found' });
@@ -266,17 +263,17 @@ console.log("existingUser:", existingUser);
       //   .select('*')
       //   .eq('id', user.id)
       //   .single();
-        
+
       //   console.log("profile:", profile);
 
-        console.log("user:", user);
+      console.log("user:", user);
 
       // if (profileError) throw profileError;
 
-    return  res.status(200).json({
+      return res.status(200).json({
         success: true,
-        user:user
-        
+        user: user
+
       });
     } catch (error) {
       console.error('Authentication error:', error);
