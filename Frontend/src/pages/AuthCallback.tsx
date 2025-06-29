@@ -63,7 +63,7 @@ useEffect(() => {
     };
 
     authenticateUser();
-    }, [searchParams, navigate]);
+    }, [searchParams ]);
 
 
   

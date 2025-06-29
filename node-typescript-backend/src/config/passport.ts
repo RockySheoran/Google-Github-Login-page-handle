@@ -38,7 +38,7 @@ passport.use(new GoogleStrategy({
     : 'http://localhost:5000/api/auth/google/callback',
   scope: ['profile', 'email'],
   passReqToCallback: true,
-  proxy: true
+  // proxy: true
 }, async (req, accessToken, refreshToken, profile, done) => {
 
   try {
@@ -77,7 +77,7 @@ passport.use(new GitHubStrategy({
     ? 'https://yourdomain.com/api/auth/github/callback'
     : 'http://localhost:5000/api/auth/github/callback',
   scope: ['user:email'],
-  proxy: true
+  // proxy: true
 }, async (accessToken: string, refreshToken: string, profile: any, done: any) => {
   try {
     // console.log(accessToken, refreshToken, profile);
