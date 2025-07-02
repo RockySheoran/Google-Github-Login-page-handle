@@ -282,17 +282,19 @@ class AuthController {
   // Get current user using JWT
   public getMe = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      // console.log(token)
-      if (!token) {
-        return res.status(401).json({ success: false, message: 'No token provided' });
-      }
+    
+      const decoded  = req.user as any
+      // const token = req.headers.authorization?.split(' ')[1];
+      // // console.log(token)
+      // if (!token) {
+      //   return res.status(401).json({ success: false, message: 'No token provided' });
+      // }
 
-      // Verify JWT token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
+      // // Verify JWT token
+      // const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
 
       // Get user from Supabase
-      const { data: { user }, error } = await supabase.auth.admin.getUserById(decoded.id);
+      const { data: { user }, error } = await supabase.auth.admin.getUserById(decoded?.id);
 
       if (error || !user) {
         console.error('User not found:', error);
