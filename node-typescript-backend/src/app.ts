@@ -1,7 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-dotenv.config({ path: '.env' });  
+dotenv.config({ path: '.env' });
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -12,7 +12,7 @@ import connectDB from './config/db';
 import authRoutes from './routes/authRoutes';
 import { errorHandler, notFound } from './middlewares/errorMiddleware';
 import './config/passport';
-// import sanitize from './middlewares/sanitize';
+
 
 // Load environment variables
 
@@ -49,8 +49,7 @@ app.use(
   })
 );
 
-// 6. Custom Sanitization Middleware
-// app.use(sanitize());
+
 
 // 7. Prevent Parameter Pollution
 app.use(

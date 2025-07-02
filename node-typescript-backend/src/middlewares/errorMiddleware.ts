@@ -12,7 +12,7 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
   let error = { ...err };
   error.message = err.message;
   console.log(error.message);
-  console.log("ddddddddddddddddddddddddddddddddddddffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff----------------------")
+  
 
   // Log to console for dev
   console.error(err.stack);

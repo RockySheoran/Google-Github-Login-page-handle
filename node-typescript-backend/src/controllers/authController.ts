@@ -8,10 +8,13 @@ class AuthController {
   public googleAuth(req: Request, res: Response, next: NextFunction) {
     const redirectUrl = req.query.redirect_uri?.toString() || `${process.env.FRONTEND_URL}/api/auth/google/callback`;
 
+
+
     passport.authenticate('google', {
 
       scope: ['profile', 'email'],
       successRedirect: redirectUrl,
+
 
     })(req, res, next);
   }
@@ -42,7 +45,10 @@ class AuthController {
         let authUser;
         if (existingUser.id !== null) {
           // User exists - update provider if needed
-          const currentProviders = existingUser.app_metadata?.providers || [];
+          const currentProviders = existingUser.raw_app_meta_data?.providers || [];
+          
+          // console.log("currentProviders" , currentProviders)
+          
           if (!currentProviders.includes('google')) {
             // Add Google to providers
             const { data: { user: updatedUser }, error: updateError } =
@@ -128,11 +134,13 @@ class AuthController {
   // GitHub authentication
   public githubAuth(req: Request, res: Response, next: NextFunction) {
     const redirectUrl = req.query.redirect_uri?.toString() || `${process.env.BACKEND_URL}/api/auth/github/callback`;
-    console.log("redirectUrl:", redirectUrl);
+
+
     passport.authenticate('github', {
       session: false,
       scope: ['user:email'],
       state: redirectUrl
+
     })(req, res, next);
   }
 
@@ -160,12 +168,13 @@ class AuthController {
         });
         console.log("existingUser:", existingUser);
 
-        console.log("existingUser:", existingUser);
+        // console.log("existingUser:", existingUser);
         // If user exists, update their information or create a new user
         let authUser;
         if (existingUser.id !== null) {
           // User exists - update provider if needed
-          const currentProviders = existingUser.app_metadata?.providers || [];
+          const currentProviders = existingUser.raw_app_meta_data?.providers || [];
+            console.log("currentProviders" , currentProviders)
           if (!currentProviders.includes('github')) {
             // Add GitHub to providers
             const { data: { user: updatedUser }, error: updateError } =
@@ -249,8 +258,8 @@ class AuthController {
           providers: authUser?.app_metadata?.providers || []
         }
 
-      // cookies 
-       res.cookie('jwt', cookiesData, {
+        // cookies 
+        res.cookie('jwt', cookiesData, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict', // Changed from strict for OAuth compatibility
@@ -274,7 +283,7 @@ class AuthController {
   public getMe = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const token = req.headers.authorization?.split(' ')[1];
-      console.log(token)
+      // console.log(token)
       if (!token) {
         return res.status(401).json({ success: false, message: 'No token provided' });
       }
@@ -299,7 +308,7 @@ class AuthController {
 
       //   console.log("profile:", profile);
 
-      console.log("user:", user);
+      // console.log("user:", user);
 
       // if (profileError) throw profileError;
 
