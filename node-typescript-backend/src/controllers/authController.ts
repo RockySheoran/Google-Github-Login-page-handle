@@ -40,7 +40,7 @@ class AuthController {
         console.log("existingUser:", existingUser);
 
         let authUser;
-        if (existingUser) {
+        if (existingUser.id !== null) {
           // User exists - update provider if needed
           const currentProviders = existingUser.app_metadata?.providers || [];
           if (!currentProviders.includes('google')) {
@@ -98,6 +98,21 @@ class AuthController {
           process.env.JWT_SECRET!,
           { expiresIn: '1h' }
         );
+        const cookiesData = {
+          token: token,
+          id: authUser?.id,
+          email: authUser?.email,
+          name: authUser?.user_metadata?.name || user.name || user.displayName,
+          providers: authUser?.app_metadata?.providers || []
+        }
+        res.cookie('jwt', cookiesData, {
+          httpOnly: true,
+          secure: true,
+          // sameSite: 'Lax'
+          sameSite: 'strict', // Changed from strict for OAuth compatibility
+          maxAge: 24 * 60 * 60 * 1000, // 1 day
+          path: '/',
+        });
 
         // Redirect with token
         const redirectUri = req.query.state?.toString() || `${process.env.FRONTEND_URL}/auth/success`;
@@ -140,7 +155,7 @@ class AuthController {
           console.error('No primary email found for GitHub user');
           return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_email`);
         }
-       const { data: existingUser } = await supabase.rpc("get_user_by_email", {
+        const { data: existingUser } = await supabase.rpc("get_user_by_email", {
           p_email: user.email,
         });
         console.log("existingUser:", existingUser);
@@ -148,7 +163,7 @@ class AuthController {
         console.log("existingUser:", existingUser);
         // If user exists, update their information or create a new user
         let authUser;
-        if (existingUser) {
+        if (existingUser.id !== null) {
           // User exists - update provider if needed
           const currentProviders = existingUser.app_metadata?.providers || [];
           if (!currentProviders.includes('github')) {
@@ -225,6 +240,24 @@ class AuthController {
         //   });
 
         // if (profileError) throw profileError;
+
+        const cookiesData = {
+          token: token,
+          id: authUser?.id,
+          email: authUser?.email,
+          name: authUser?.user_metadata?.name || user.name || user.displayName,
+          providers: authUser?.app_metadata?.providers || []
+        }
+
+      // cookies 
+       res.cookie('jwt', cookiesData, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict', // Changed from strict for OAuth compatibility
+          maxAge: 24 * 60 * 60 * 1000, // 1 day
+          path: '/',
+        });
+
 
         // Redirect with token
         const redirectUri = req.query.state?.toString() || `${process.env.FRONTEND_URL}/auth/success`;

@@ -9,12 +9,16 @@ interface AuthenticatedRequest extends Request {
 }
 
 // Protect routes
-export const protect = async (req: AuthenticatedRequest, res: Response, next: NextFunction) : Promise<any> => {
-  let token;
+export const protect = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<any> => {
+  let token: string | undefined;
 
-  // Get token from cookie
-  if (req.cookies?.jwt) {
-    token = req.cookies.jwt;
+  // Check authorization header
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+  // Check cookies
+  else if (req.cookies?.jwt) {
+    token = req.cookies.token;
   }
   console.log(token)
 

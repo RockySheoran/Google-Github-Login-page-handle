@@ -31,7 +31,7 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-// app.use(limiter);
+app.use(limiter);
 
 // 3. Body Parsers
 app.use(express.json({ limit: '10kb' }));
