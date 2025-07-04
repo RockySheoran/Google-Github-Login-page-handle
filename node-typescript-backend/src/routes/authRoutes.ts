@@ -30,5 +30,7 @@ router.get('/me',protect, authController.getMe);
 
 // Logout
 router.get('/logout', protect, authController.logout);
+router.post('/reset-password',authController.resetPassword)
+router.post('/forgot-password',authController.forgotPassword)
 
 export default router;

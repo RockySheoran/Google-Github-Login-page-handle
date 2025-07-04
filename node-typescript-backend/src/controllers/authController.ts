@@ -46,9 +46,9 @@ class AuthController {
         if (existingUser.id !== null) {
           // User exists - update provider if needed
           const currentProviders = existingUser.raw_app_meta_data?.providers || [];
-          
+
           // console.log("currentProviders" , currentProviders)
-          
+
           if (!currentProviders.includes('google')) {
             // Add Google to providers
             const { data: { user: updatedUser }, error: updateError } =
@@ -174,7 +174,7 @@ class AuthController {
         if (existingUser.id !== null) {
           // User exists - update provider if needed
           const currentProviders = existingUser.raw_app_meta_data?.providers || [];
-            console.log("currentProviders" , currentProviders)
+          console.log("currentProviders", currentProviders)
           if (!currentProviders.includes('github')) {
             // Add GitHub to providers
             const { data: { user: updatedUser }, error: updateError } =
@@ -282,8 +282,8 @@ class AuthController {
   // Get current user using JWT
   public getMe = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-    
-      const decoded  = req.user as any
+
+      const decoded = req.user as any
       // const token = req.headers.authorization?.split(' ')[1];
       // // console.log(token)
       // if (!token) {
@@ -337,6 +337,105 @@ class AuthController {
       next(error);
     }
   };
+
+
+
+  public async forgotPassword(req: Request, res: Response): Promise<any> {
+    try {
+      const { email } = req.body;
+
+      const { data: existingUser } = await supabase.rpc("get_user_by_email", {
+        p_email: email,
+      });
+      console.log("existingUser:", existingUser);
+
+
+      if (existingUser.id == null) {
+        return res.status(404).json({
+          success: false,
+          message: 'If this email exists, a reset link has been sent'
+        });
+      }
+
+      // 2. Generate reset token (using Supabase's built-in recovery)
+      const { data, error } = await supabase
+        .auth
+        .resetPasswordForEmail(email);
+
+      if (error) {
+        console.error('Supabase password reset error:', error);
+        throw error;
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Please check your email'
+      });
+
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error processing password reset request'
+      });
+    }
+  }
+
+  // RESET PASSWORD
+  public async resetPassword(req: Request, res: Response): Promise<any> {
+    try {
+      const { email, newPassword } = req.body;
+      const { data: existingUser } = await supabase.rpc("get_user_by_email", {
+        p_email: email,
+      });
+      console.log("existingUser:", existingUser);
+
+
+
+      if (existingUser.id == null) {
+        return res.status(404).json({
+          success: false,
+          message: 'If this email exists, a reset link has been sent'
+        });
+      }
+
+
+      // 1. Verify the token with Supabase
+      console.log(email, newPassword)
+
+
+
+      // 2. Update the password
+      const { data, error } = await supabase.auth.admin.updateUserById(
+        existingUser.id,
+        { password: newPassword }
+      );
+      console.log(data)
+      console.log(error)
+      if (error) {
+        console.error('Password update error');
+        res.status(500).json({
+          success: false,
+          message: 'Error resetting password'
+        });
+
+      }
+
+
+      res.status(200).json({
+        success: true,
+        message: 'Password updated successfully'
+      });
+
+    } catch (error) {
+      console.error('Reset password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error resetting password'
+      });
+    }
+  }
+
 }
 
 export default new AuthController();
